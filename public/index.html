@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous Messaging Room</title>
+    <style>
+        body {
+            background-color: #f0f8ff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .bow {
+            width: 50px;
+            height: 30px;
+            border: solid 10px transparent;
+            border-top-color: pink;
+            border-bottom-color: pink;
+            border-radius: 100% 100% 0 0;
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .bow::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            background-color: pink;
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            color: #333;
+        }
+
+        #roomTitle {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        #messages {
+            border: 1px solid #ccc;
+            width: 80%;
+            height: 60vh;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            background-color: white;
+            padding: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .message {
+            max-width: 60%;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 15px;
+            position: relative;
+            clear: both;
+        }
+
+        .sender {
+            background-color: #d1e7dd;
+            margin-left: auto;
+            text-align: right;
+            color: #333;
+        }
+
+        .receiver {
+            background-color: #fff3cd;
+            margin-right: auto;
+            text-align: left;
+            color: #333;
+        }
+
+        #messageInput {
+            width: 70%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #555;
+        }
+
+        /* Different colors for each sender */
+        .message:nth-child(odd).sender {
+            background-color: #d1c4e9;
+        }
+
+        .message:nth-child(even).sender {
+            background-color: #f48fb1;
+        }
+
+        .message:nth-child(3n).sender {
+            background-color: #80deea;
+        }
+
+        .message:nth-child(4n).sender {
+            background-color: #ffcc80;
+        }
+
+        /* Scroll styling */
+        #messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #messages::-webkit-scrollbar-thumb {
+            background-color: #ccc;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="bow"></div>
+    <h1>Anonymous Messaging Room</h1>
+    <div id="roomTitle"></div>
+
+    <div id="messages"></div>
+
+    <input type="text" id="messageInput" placeholder="Type a message..." />
+    <button onclick="sendMessage()">Send</button>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const roomId = window.location.pathname.split('/').pop();
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const roomTitle = document.getElementById('roomTitle');
+
+        // Set room title to the roomId or allow customization
+        roomTitle.textContent = `Room Topic: ${roomId}`;
+
+        // Join the room based on the room ID in the URL
+        socket.emit('joinRoom', roomId);
+
+        // Load previous messages when joining a room
+        socket.on('loadMessages', (messages) => {
+            messages.forEach((message) => {
+                addMessageToDOM(message.text, message.sender);
+            });
+        });
+
+        // Listen for new messages from the server
+        socket.on('message', (message) => {
+            addMessageToDOM(message.text, message.sender); // Display new messages in real-time
+        });
+
+        // Send a new message
+        function sendMessage() {
+            const message = messageInput.value;
+            if (message.trim()) {
+                socket.emit('newMessage', { roomId, text: message, sender: 'me' });
+                messageInput.value = ''; // Clear input after sending
+            }
+        }
+
+        // Add a new message to the DOM
+        function addMessageToDOM(message, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            messageElement.classList.add('message');
+
+            if (sender === 'me') {
+                messageElement.classList.add('sender');
+            } else {
+                messageElement.classList.add('receiver');
+            }
+
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to the bottom
+        }
+    </script>
+</body>
+</html>
